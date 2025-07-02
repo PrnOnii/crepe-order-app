@@ -1,47 +1,62 @@
 <template>
-  <div class="max-w-md mx-auto p-4 space-y-6">
-    <h1 class="text-2xl font-bold text-center">🍓 Order Your Crêpe</h1>
-
-    <!-- Base selection -->
+  <div class="max-w-3xl mx-auto p-6 space-y-6">
+    <h1 class="text-2xl font-bold text-center flex items-center justify-center gap-2">
+      🥞 Order a Crêpe
+    </h1>
     <div>
-      <h2 class="font-semibold mb-1">Choose your base</h2>
-      <select v-model="order.base" class="w-full border p-2 rounded">
-        <option disabled value="">-- Select base --</option>
-        <option>Sweet</option>
-        <option>Salty</option>
-      </select>
+      <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
+      <input
+        v-model="order.name"
+        type="text"
+        id="name"
+        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-blue-300"
+        placeholder="e.g. Daisuke, Andy..."
+      />
     </div>
-
-    <!-- Toppings -->
+    <!-- Salty Toppings -->
     <div>
-      <h2 class="font-semibold mb-1">Toppings</h2>
-      <div class="flex flex-wrap gap-2">
-        <label
-          v-for="topping in toppingOptions"
-          :key="topping"
-          class="flex items-center gap-1 text-sm"
-        >
-          <input type="checkbox" v-model="order.toppings" :value="topping" />
-          {{ topping }}
-        </label>
+      <h2 class="font-semibold mb-2">Salty Toppings</h2>
+      <div class="grid grid-cols-3 sm:grid-cols-4 gap-4">
+        <ToppingIcon
+          v-for="topping in saltyToppings"
+          :key="topping.label"
+          :label="topping.label"
+          :jpLabel="topping.jp"
+          :icon="topping.icon"
+          :selected="order.toppings.includes(topping.label)"
+          @toggle="toggleTopping(topping.label)"
+        />
       </div>
     </div>
 
-    <!-- Notes -->
+    <!-- Sweet Toppings -->
     <div>
-      <h2 class="font-semibold mb-1">Extra note</h2>
-      <textarea
-        v-model="order.note"
-        class="w-full border p-2 rounded"
-        rows="3"
-        placeholder="Anything special?"
-      ></textarea>
+      <h2 class="font-semibold mb-2">Sweet Toppings</h2>
+      <div class="grid grid-cols-3 sm:grid-cols-4 gap-4">
+        <ToppingIcon
+          v-for="topping in sweetToppings"
+          :key="topping.label"
+          :label="topping.label"
+          :jpLabel="topping.jp"
+          :icon="topping.icon"
+          :selected="order.toppings.includes(topping.label)"
+          @toggle="toggleTopping(topping.label)"
+        />
+      </div>
     </div>
 
-    <!-- Submit -->
+    <!-- Note Field -->
+    <textarea
+      v-model="order.note"
+      placeholder="Any note for the chef?"
+      class="w-full border rounded-lg p-3 text-sm resize-none"
+      rows="3"
+    ></textarea>
+
+    <!-- Submit Button -->
     <button
       @click="submitOrder"
-      class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition"
+      class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
     >
       Submit Order
     </button>
@@ -50,20 +65,75 @@
 
 <script setup>
 import { reactive } from 'vue'
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { db } from '@/firebase'
+import { useRouter } from 'vue-router'
+import ToppingIcon from '@/components/ToppingIcon.vue'
+import { useToast } from 'vue-toastification'
+import { getNextOrderId } from '@/utils/orderCounter'
+
+const toast = useToast()
+const router = useRouter()
 
 const order = reactive({
-  base: '',
+  name: '',
   toppings: [],
   note: ''
 })
 
-const toppingOptions = [
-  'Nutella', 'Banana', 'Strawberry', 'Cheese',
-  'Egg', 'Ham', 'Mushroom', 'Caramel', 'Whipped Cream'
+const saltyToppings = [
+  { label: 'Butter', jp: 'バター', icon: '🧈' },
+  { label: 'Ham', jp: 'ハム', icon: '🥓' },
+  { label: 'Cheese', jp: 'チーズ', icon: '🧀' },
+  { label: 'Egg', jp: '卵', icon: '🥚' },
+  { label: 'Mushroom', jp: 'きのこ', icon: '🍄' },
+  { label: 'Onions', jp: '玉ねぎ', icon: '🧅' },
+  { label: 'Creamed Leek', jp: 'ポロネギのクリーム煮', icon: '🌿' }
 ]
 
-const submitOrder = () => {
-  console.log('ORDER:', { ...order })
-  alert('Order submitted (console logged for now)!')
+const sweetToppings = [
+  { label: 'Sugar', jp: '砂糖', icon: '🍬' },
+  { label: 'Lemon Sugar', jp: 'レモンシュガー', icon: '🍋' },
+  { label: 'Cinnamon Sugar', jp: 'シナモンシュガー', icon: '🧁' },
+  { label: 'Butter Sugar', jp: 'バターシュガー', icon: '🧈' },
+  { label: 'Nutella', jp: 'ヌテラ', icon: '🍫' },
+  { label: 'Honey', jp: 'はちみつ', icon: '🍯' }
+]
+
+const toggleTopping = (label) => {
+  const index = order.toppings.indexOf(label)
+  if (index >= 0) {
+    order.toppings.splice(index, 1)
+  } else {
+    order.toppings.push(label)
+  }
+}
+
+const submitOrder = async () => {
+  try {
+    const orderId = await getNextOrderId()
+
+    const docRef = await addDoc(collection(db, 'orders'), {
+      ...order,
+      orderId, // Human-readable number (e.g., 42)
+      status: 'pending',
+      archived: false,
+      createdAt: serverTimestamp()
+    })
+
+    toast.success(`Order #${orderId} submitted!`)
+
+    // Reset form
+    order.name = ''
+    order.toppings = []
+    order.note = ''
+
+    // Redirect to order status page using Firestore doc ID
+    router.push({ name: 'CustomerOrder', params: { id: docRef.id } })
+
+  } catch (e) {
+    toast.error('Failed to send order')
+    console.error(e)
+  }
 }
 </script>

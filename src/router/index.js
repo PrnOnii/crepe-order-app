@@ -8,7 +8,7 @@ import CustomerQueueView from '@/views/CustomerQueueView.vue'
 const routes = [
   { path: '/', redirect: '/order' },
   { path: '/order', component: OrderView },
-  { path: '/order/:id', component: CustomerOrderView },
+  { path: '/order/:id', name: 'CustomerOrder', component: CustomerOrderView },
   { path: '/kitchen', component: KitchenView },
   { path: '/history', component: HistoryView },
   { path: '/queue', component: CustomerQueueView },

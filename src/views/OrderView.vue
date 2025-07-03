@@ -56,7 +56,8 @@
     <!-- Submit Button -->
     <button
       @click="submitOrder"
-      class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+      :disabled="!order.name"
+      class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
     >
       Submit Order
     </button>

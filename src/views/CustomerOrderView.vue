@@ -2,22 +2,6 @@
     <div class="max-w-md mx-auto p-4">
       <h1 class="text-2xl font-bold text-center mb-6">Check Your Order</h1>
   
-      <div class="mb-4">
-        <input
-          v-model="input"
-          type="text"
-          placeholder="Enter your order number"
-          class="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring focus:border-blue-300"
-        />
-      </div>
-  
-      <button
-        @click="fetchOrderByInput"
-        class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-      >
-        Check Status
-      </button>
-  
       <div class="relative mt-6">
         <transition name="fade" mode="out-in">
           <div

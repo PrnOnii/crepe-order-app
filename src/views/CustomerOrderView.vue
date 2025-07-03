@@ -38,6 +38,15 @@
           </div>
         </transition>
       </div>
+
+      <div v-if="order && order.status === 'done' && !showReadyOverlay" class="mt-4 text-center">
+        <router-link
+          :to="{ path: '/order', query: { view: 'customer' } }"
+          class="inline-block bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded transition"
+        >
+          Order another crêpe?
+        </router-link>
+      </div>
   
       <!-- READY OVERLAY -->
       <transition name="fade-scale">

@@ -130,7 +130,7 @@ const submitOrder = async () => {
     order.note = ''
 
     // Redirect to order status page using Firestore doc ID
-    router.push({ name: 'CustomerOrder', params: { id: docRef.id } })
+    router.push({ name: 'CustomerOrder', params: { id: docRef.id }, query: { view: 'customer' } })
 
   } catch (e) {
     toast.error('Failed to send order')

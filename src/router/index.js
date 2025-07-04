@@ -4,6 +4,8 @@ import KitchenView from '@/views/KitchenView.vue'
 import HistoryView from '@/views/HistoryView.vue'
 import CustomerOrderView from '@/views/CustomerOrderView.vue'
 import CustomerQueueView from '@/views/CustomerQueueView.vue'
+import AdminToppingControl from '@/views/AdminToppingControl.vue'
+
 
 const routes = [
   { path: '/', redirect: '/order' },
@@ -12,6 +14,8 @@ const routes = [
   { path: '/kitchen', component: KitchenView },
   { path: '/history', component: HistoryView },
   { path: '/queue', component: CustomerQueueView },
+  { path: '/admin/toppings', component: AdminToppingControl },
+  
 ]
 
 export const router = createRouter({

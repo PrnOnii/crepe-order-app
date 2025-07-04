@@ -13,6 +13,7 @@
         placeholder="e.g. Daisuke, Andy..."
       />
     </div>
+
     <!-- Salty Toppings -->
     <div>
       <h2 class="font-semibold mb-2">Salty Toppings</h2>
@@ -24,6 +25,9 @@
           :jpLabel="topping.jp"
           :icon="topping.icon"
           :selected="order.toppings.includes(topping.label)"
+          :disabled="!topping.available"
+          :note="!topping.available ? 'Unavailable / 品切れ' : ''"
+          :dimmed="!topping.available"
           @toggle="toggleTopping(topping.label)"
         />
       </div>
@@ -40,6 +44,9 @@
           :jpLabel="topping.jp"
           :icon="topping.icon"
           :selected="order.toppings.includes(topping.label)"
+          :disabled="!topping.available"
+          :note="!topping.available ? 'Unavailable / 品切れ' : ''"
+          :dimmed="!topping.available"
           @toggle="toggleTopping(topping.label)"
         />
       </div>
@@ -65,8 +72,8 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { reactive, onMounted } from 'vue'
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore'
 import { db } from '@/firebase'
 import { useRouter } from 'vue-router'
 import ToppingIcon from '@/components/ToppingIcon.vue'
@@ -82,41 +89,75 @@ const order = reactive({
   note: ''
 })
 
-const saltyToppings = [
-  { label: 'Butter', jp: 'バター', icon: '🧈' },
-  { label: 'Ham', jp: 'ハム', icon: '🥓' },
-  { label: 'Cheese', jp: 'チーズ', icon: '🧀' },
-  { label: 'Egg', jp: '卵', icon: '🥚' },
-  { label: 'Mushroom', jp: 'きのこ', icon: '🍄' },
-  { label: 'Onions', jp: '玉ねぎ', icon: '🧅' },
-  { label: 'Creamed Leek', jp: 'ポロネギのクリーム煮', icon: '🌿' }
-]
+const saltyToppings = reactive([
+  { label: 'Butter', jp: 'バター', icon: '🧈', available: true },
+  { label: 'Ham', jp: 'ハム', icon: '🥓', available: true },
+  { label: 'Cheese', jp: 'チーズ', icon: '🧀', available: true },
+  { label: 'Egg', jp: '卵', icon: '🥚', available: true },
+  { label: 'Mushroom', jp: 'きのこ', icon: '🍄', available: true },
+  { label: 'Onions', jp: '玉ねぎ', icon: '🧅', available: true },
+  { label: 'Creamed Leek', jp: 'ポロネギのクリーム煮', icon: '🌿', available: true }
+])
 
-const sweetToppings = [
-  { label: 'Sugar', jp: '砂糖', icon: '🍬' },
-  { label: 'Lemon Sugar', jp: 'レモンシュガー', icon: '🍋' },
-  { label: 'Cinnamon Sugar', jp: 'シナモンシュガー', icon: '🧁' },
-  { label: 'Butter Sugar', jp: 'バターシュガー', icon: '🧈' },
-  { label: 'Nutella', jp: 'ヌテラ', icon: '🍫' },
-  { label: 'Honey', jp: 'はちみつ', icon: '🍯' }
-]
+const sweetToppings = reactive([
+  { label: 'Sugar', jp: '砂糖', icon: '🍬', available: true },
+  { label: 'Lemon Sugar', jp: 'レモンシュガー', icon: '🍋', available: true },
+  { label: 'Cinnamon Sugar', jp: 'シナモンシュガー', icon: '🧁', available: true },
+  { label: 'Butter Sugar', jp: 'バターシュガー', icon: '🧈', available: true },
+  { label: 'Nutella', jp: 'ヌテラ', icon: '🍫', available: true },
+  { label: 'Honey', jp: 'はちみつ', icon: '🍯', available: true }
+])
 
 const toggleTopping = (label) => {
-  const index = order.toppings.indexOf(label)
-  if (index >= 0) {
-    order.toppings.splice(index, 1)
+  const topping = [...saltyToppings, ...sweetToppings].find(t => t.label === label)
+  if (!topping?.available) return
+
+  if (order.toppings.includes(label)) {
+    order.toppings = order.toppings.filter(t => t !== label)
   } else {
     order.toppings.push(label)
   }
 }
 
+const fetchToppingAvailability = async () => {
+  const all = [...saltyToppings, ...sweetToppings]
+  for (const topping of all) {
+    const ref = doc(db, 'toppingStatus', topping.label)
+    const snap = await getDoc(ref)
+    topping.available = snap.exists() ? snap.data().available : true
+  }
+}
+
 const submitOrder = async () => {
   try {
+    const unavailable = []
+    for (const label of order.toppings) {
+      const ref = doc(db, 'toppingStatus', label)
+      const snap = await getDoc(ref)
+      const isAvailable = snap.exists() ? snap.data().available : true
+      if (!isAvailable) {
+        unavailable.push(label)
+      }
+    }
+
+    if (unavailable.length > 0) {
+      for (const label of unavailable) {
+        toast.error(`Sorry, ${label} is no longer available.`)
+
+        order.toppings = order.toppings.filter(t => t !== label)
+
+        const allToppings = [...saltyToppings, ...sweetToppings]
+        const match = allToppings.find(t => t.label === label)
+        if (match) match.available = false
+      }
+      return
+    }
+
     const orderId = await getNextOrderId()
 
     const docRef = await addDoc(collection(db, 'orders'), {
       ...order,
-      orderId, // Human-readable number (e.g., 42)
+      orderId,
       status: 'pending',
       archived: false,
       createdAt: serverTimestamp()
@@ -124,17 +165,19 @@ const submitOrder = async () => {
 
     toast.success(`Order #${orderId} submitted!`)
 
-    // Reset form
     order.name = ''
     order.toppings = []
     order.note = ''
 
-    // Redirect to order status page using Firestore doc ID
-    router.push({ name: 'CustomerOrder', params: { id: docRef.id }, query: { view: 'customer' } })
-
+    router.push({
+      name: 'CustomerOrder',
+      params: { id: docRef.id },
+      query: { view: 'customer' }
+    })
   } catch (e) {
     toast.error('Failed to send order')
     console.error(e)
   }
 }
+onMounted(fetchToppingAvailability)
 </script>

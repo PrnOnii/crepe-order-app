@@ -40,6 +40,13 @@ const isCustomerView = computed(() => route.query.view === 'customer')
       >
         📢 Queue
       </RouterLink>
+      <RouterLink
+        to="/admin/toppings"
+        class="hover:underline"
+        :class="{ 'font-bold underline': $route.path === '/admin/toppings' }"
+      >
+        🛠 Admin
+      </RouterLink>
     </nav>
 
     <main class="p-4 sm:p-6 lg:p-8">

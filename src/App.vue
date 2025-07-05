@@ -47,6 +47,13 @@ const isCustomerView = computed(() => route.query.view === 'customer')
       >
         🛠 Admin
       </RouterLink>
+      <RouterLink
+        to="/admin/export"
+        class="hover:underline"
+        :class="{ 'font-bold underline': $route.path === '/admin/export' }"
+      >
+        🛠 Export
+      </RouterLink>
     </nav>
 
     <main class="p-4 sm:p-6 lg:p-8">

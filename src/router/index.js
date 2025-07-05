@@ -5,6 +5,7 @@ import HistoryView from '@/views/HistoryView.vue'
 import CustomerOrderView from '@/views/CustomerOrderView.vue'
 import CustomerQueueView from '@/views/CustomerQueueView.vue'
 import AdminToppingControl from '@/views/AdminToppingControl.vue'
+import AdminExportOrders from '@/views/AdminExportOrders.vue'
 
 
 const routes = [
@@ -15,6 +16,7 @@ const routes = [
   { path: '/history', component: HistoryView },
   { path: '/queue', component: CustomerQueueView },
   { path: '/admin/toppings', component: AdminToppingControl },
+  { path: '/admin/export', component: AdminExportOrders },
   
 ]
 

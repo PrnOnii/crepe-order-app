@@ -105,7 +105,8 @@ const sweetToppings = reactive([
   { label: 'Cinnamon Sugar', jp: 'シナモンシュガー', icon: '🧁', available: true },
   { label: 'Butter Sugar', jp: 'バターシュガー', icon: '🧈', available: true },
   { label: 'Nutella', jp: 'ヌテラ', icon: '🍫', available: true },
-  { label: 'Honey', jp: 'はちみつ', icon: '🍯', available: true }
+  { label: 'Honey', jp: 'はちみつ', icon: '🍯', available: true },
+  { label: 'Apple', jp: 'りんご', icon: '🍎'}
 ])
 
 const toggleTopping = (label) => {

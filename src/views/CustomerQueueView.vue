@@ -65,7 +65,7 @@ const speak = (orderId, delay = false) => {
     const voices = speechSynthesis.getVoices()
     const jpVoice = voices.find(v => v.lang === 'ja-JP' && v.name.includes('Google'))
 
-    const message = `ご注文番号、… ${orderId}、… 番のお客様、商品ができあがりました。カウンターまでお越しください。`
+    const message = `${orderId}番、…　の食券をお持ちのお客様、… カウンターへどうぞ。`
 
     const utterance = new SpeechSynthesisUtterance(message)
     utterance.lang = 'ja-JP'

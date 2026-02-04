@@ -49,7 +49,7 @@
     { label: 'Butter Sugar', jp: 'バターシュガー', icon: '🧈' },
     { label: 'Nutella', jp: 'ヌテラ', icon: '🍫' },
     { label: 'Honey', jp: 'はちみつ', icon: '🍯',},
-    
+    { label: 'Apple', jp: 'りんご', icon: '🍎'}
   ]
   
   const toppingGroups = ref({

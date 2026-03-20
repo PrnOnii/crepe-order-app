@@ -9,7 +9,7 @@
   >
     <div class="text-2xl">{{ icon }}</div>
     <div class="mt-1 text-sm font-semibold">{{ label }}</div>
-    <div class="text-xs text-gray-500">{{ jpLabel }}</div>
+    <div class="text-xs text-gray-500 whitespace-pre-line">{{ jpLabel }}</div>
     <div v-if="note" class="text-xs text-red-500 font-semibold mt-1">{{ note }}</div>
   </div>
 </template>

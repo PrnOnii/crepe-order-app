@@ -76,7 +76,121 @@
   const order = ref(null)
   const showReadyOverlay = ref(false)
   const notFound = ref(false)
+  const hasReadyAlertFired = ref(false)
   let unsubscribe = null
+  let audioContext = null
+  let removeAudioUnlockListeners = null
+
+  const getReadyAlertStorageKey = (docId) => `ready-alerted:${docId}`
+
+  const loadReadyAlertState = (docId) => {
+    if (!docId) {
+      hasReadyAlertFired.value = false
+      return
+    }
+
+    hasReadyAlertFired.value = sessionStorage.getItem(getReadyAlertStorageKey(docId)) === '1'
+  }
+
+  const markReadyAlertAsFired = (docId) => {
+    if (!docId) return
+    sessionStorage.setItem(getReadyAlertStorageKey(docId), '1')
+    hasReadyAlertFired.value = true
+  }
+
+  const getAudioContext = () => {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext
+    if (!AudioContextClass) return null
+
+    if (!audioContext) {
+      audioContext = new AudioContextClass()
+    }
+
+    return audioContext
+  }
+
+  const ensureAudioUnlocked = async () => {
+    const context = getAudioContext()
+    if (!context) return false
+
+    if (context.state === 'suspended') {
+      try {
+        await context.resume()
+      } catch {
+        return false
+      }
+    }
+
+    return context.state === 'running'
+  }
+
+  const setupAudioUnlockListeners = () => {
+    const events = ['touchstart', 'pointerdown', 'click', 'keydown']
+
+    const tryUnlock = async () => {
+      const isUnlocked = await ensureAudioUnlocked()
+      if (!isUnlocked || !removeAudioUnlockListeners) return
+
+      removeAudioUnlockListeners()
+      removeAudioUnlockListeners = null
+    }
+
+    events.forEach((eventName) => {
+      window.addEventListener(eventName, tryUnlock, { passive: true })
+    })
+
+    removeAudioUnlockListeners = () => {
+      events.forEach((eventName) => {
+        window.removeEventListener(eventName, tryUnlock)
+      })
+    }
+  }
+
+  const playReadyJingle = async () => {
+    const context = getAudioContext()
+    if (!context) return
+
+    const isUnlocked = await ensureAudioUnlocked()
+    if (!isUnlocked) return
+
+    const notes = [
+      { frequency: 659.25, duration: 0.1 }, // E5
+      { frequency: 783.99, duration: 0.12 }, // G5
+      { frequency: 1046.5, duration: 0.18 }, // C6
+    ]
+
+    let currentTime = context.currentTime
+
+    notes.forEach(({ frequency, duration }) => {
+      const oscillator = context.createOscillator()
+      const gain = context.createGain()
+
+      oscillator.type = 'sine'
+      oscillator.frequency.setValueAtTime(frequency, currentTime)
+
+      gain.gain.setValueAtTime(0.0001, currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.14, currentTime + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.0001, currentTime + duration)
+
+      oscillator.connect(gain)
+      gain.connect(context.destination)
+
+      oscillator.start(currentTime)
+      oscillator.stop(currentTime + duration + 0.02)
+
+      currentTime += duration + 0.03
+    })
+  }
+
+  const triggerReadyNotification = async () => {
+    showReadyOverlay.value = true
+
+    if ('vibrate' in navigator) {
+      navigator.vibrate([220, 100, 220])
+    }
+
+    await playReadyJingle()
+  }
   
   const setupRealtimeOrderListener = (docId) => {
     if (unsubscribe) unsubscribe()
@@ -102,21 +216,26 @@
     () => route.params.id,
     (newId) => {
       input.value = newId || ''
+      loadReadyAlertState(newId)
       if (newId) setupRealtimeOrderListener(newId)
     },
     { immediate: true }
   )
   
   onMounted(() => {
+    setupAudioUnlockListeners()
+
     const id = route.params.id
     if (id) {
       input.value = id
+      loadReadyAlertState(id)
       setupRealtimeOrderListener(id)
     }
   })
   
   onBeforeUnmount(() => {
     if (unsubscribe) unsubscribe()
+    if (removeAudioUnlockListeners) removeAudioUnlockListeners()
   })
   
   const fetchOrderByInput = async () => {
@@ -134,14 +253,17 @@
     }
   }
 
-  watch(() => order.value?.status, (newStatus) => {
-  if (newStatus === 'done') {
-    showReadyOverlay.value = true
-    if ('vibrate' in navigator) {
-      navigator.vibrate([200, 100, 200])
-    }
-  }
-})
+  watch(() => order.value?.status, async (newStatus, oldStatus) => {
+    if (newStatus !== 'done') return
+
+    const docId = route.params.id
+    const becameDone = oldStatus !== 'done'
+
+    if (!becameDone || hasReadyAlertFired.value) return
+
+    await triggerReadyNotification()
+    markReadyAlertAsFired(docId)
+  })
   </script>
   
   <style scoped>

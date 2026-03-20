@@ -14,13 +14,9 @@
       />
     </div>
 
-    <!-- Salty Toppings -->
-    <div>
-      <h2 class="font-semibold mb-2">Salty Toppings</h2>
-      <div class="grid grid-cols-3 sm:grid-cols-4 gap-4">
+    <ToppingSections :groups="toppingGroups">
+      <template #item="{ topping }">
         <ToppingIcon
-          v-for="topping in saltyToppings"
-          :key="topping.label"
           :label="topping.label"
           :jpLabel="topping.jp"
           :icon="topping.icon"
@@ -30,27 +26,8 @@
           :dimmed="!topping.available"
           @toggle="toggleTopping(topping.label)"
         />
-      </div>
-    </div>
-
-    <!-- Sweet Toppings -->
-    <div>
-      <h2 class="font-semibold mb-2">Sweet Toppings</h2>
-      <div class="grid grid-cols-3 sm:grid-cols-4 gap-4">
-        <ToppingIcon
-          v-for="topping in sweetToppings"
-          :key="topping.label"
-          :label="topping.label"
-          :jpLabel="topping.jp"
-          :icon="topping.icon"
-          :selected="order.toppings.includes(topping.label)"
-          :disabled="!topping.available"
-          :note="!topping.available ? 'Unavailable / 品切れ' : ''"
-          :dimmed="!topping.available"
-          @toggle="toggleTopping(topping.label)"
-        />
-      </div>
-    </div>
+      </template>
+    </ToppingSections>
 
     <!-- Note Field -->
     <textarea
@@ -77,8 +54,10 @@ import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/fires
 import { db } from '@/firebase'
 import { useRouter } from 'vue-router'
 import ToppingIcon from '@/components/ToppingIcon.vue'
+import ToppingSections from '@/components/ToppingSections.vue'
 import { useToast } from 'vue-toastification'
 import { getNextOrderId } from '@/utils/orderCounter'
+import { createToppingGroups } from '@/constants/toppings'
 
 const toast = useToast()
 const router = useRouter()
@@ -89,28 +68,12 @@ const order = reactive({
   note: ''
 })
 
-const saltyToppings = reactive([
-  { label: 'Butter', jp: 'バター', icon: '🧈', available: true },
-  { label: 'Ham', jp: 'ハム', icon: '🥓', available: true },
-  { label: 'Cheese', jp: 'チーズ', icon: '🧀', available: true },
-  { label: 'Egg', jp: '卵', icon: '🥚', available: true },
-  { label: 'Mushroom', jp: 'きのこ', icon: '🍄', available: true },
-  { label: 'Onions', jp: '玉ねぎ', icon: '🧅', available: true },
-  { label: 'Creamed Leek', jp: 'ポロネギのクリーム煮', icon: '🌿', available: true }
-])
+const toppingGroups = reactive(createToppingGroups())
 
-const sweetToppings = reactive([
-  { label: 'Sugar', jp: '砂糖', icon: '🍬', available: true },
-  { label: 'Lemon Sugar', jp: 'レモンシュガー', icon: '🍋', available: true },
-  { label: 'Cinnamon Sugar', jp: 'シナモンシュガー', icon: '🧁', available: true },
-  { label: 'Butter Sugar', jp: 'バターシュガー', icon: '🧈', available: true },
-  { label: 'Nutella', jp: 'ヌテラ', icon: '🍫', available: true },
-  { label: 'Honey', jp: 'はちみつ', icon: '🍯', available: true },
-  { label: 'Apple', jp: 'りんご', icon: '🍎'}
-])
+const getAllToppings = () => toppingGroups.flatMap(group => group.items)
 
 const toggleTopping = (label) => {
-  const topping = [...saltyToppings, ...sweetToppings].find(t => t.label === label)
+  const topping = getAllToppings().find(t => t.label === label)
   if (!topping?.available) return
 
   if (order.toppings.includes(label)) {
@@ -121,7 +84,7 @@ const toggleTopping = (label) => {
 }
 
 const fetchToppingAvailability = async () => {
-  const all = [...saltyToppings, ...sweetToppings]
+  const all = getAllToppings()
   for (const topping of all) {
     const ref = doc(db, 'toppingStatus', topping.label)
     const snap = await getDoc(ref)
@@ -147,7 +110,7 @@ const submitOrder = async () => {
 
         order.toppings = order.toppings.filter(t => t !== label)
 
-        const allToppings = [...saltyToppings, ...sweetToppings]
+        const allToppings = getAllToppings()
         const match = allToppings.find(t => t.label === label)
         if (match) match.available = false
       }
